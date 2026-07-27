@@ -33,7 +33,7 @@ def _distance(left: str, right: str) -> int:
 
 def _name_collisions(data: dict[str, Any]) -> dict[str, Any]:
     names = [str(name).strip() for name in _require(data, "names") if str(name).strip()]
-    if len(names) != len(set(name.casefold() for name in names)):
+    if len(names) != len({name.casefold() for name in names}):
         raise ValueError("names must be unique ignoring case")
     collisions = []
     for left, right in combinations(names, 2):
