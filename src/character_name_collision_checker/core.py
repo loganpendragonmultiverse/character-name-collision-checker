@@ -35,21 +35,41 @@ def _name_collisions(data: dict[str, Any]) -> dict[str, Any]:
     names = [str(name).strip() for name in _require(data, "names") if str(name).strip()]
     if len(names) != len({name.casefold() for name in names}):
         raise ValueError("names must be unique ignoring case")
+    threshold = float(data.get("visual_threshold", 0.72))
+    if not 0 <= threshold <= 1:
+        raise ValueError("visual_threshold must be between 0 and 1")
+    allowed_pairs = {
+        frozenset(str(name).strip().casefold() for name in pair)
+        for pair in data.get("allowed_pairs", [])
+        if isinstance(pair, list) and len(pair) == 2
+    }
     collisions = []
     for left, right in combinations(names, 2):
-        similarity = 1 - _distance(left.casefold(), right.casefold()) / max(
-            len(left), len(right), 1
-        )
+        if frozenset({left.casefold(), right.casefold()}) in allowed_pairs:
+            continue
+        distance = _distance(left.casefold(), right.casefold())
+        similarity = 1 - distance / max(len(left), len(right), 1)
         left_sound = re.sub("[aeiouy\\W]", "", left.casefold().replace("ph", "f"))
         right_sound = re.sub("[aeiouy\\W]", "", right.casefold().replace("ph", "f"))
-        reasons = (["visual"] if similarity >= 0.72 else []) + (
+        reasons = (["visual"] if similarity >= threshold else []) + (
             ["phonetic"] if left_sound == right_sound else []
         )
         if reasons:
             collisions.append(
-                {"names": [left, right], "similarity": round(similarity, 3), "reasons": reasons}
+                {
+                    "names": [left, right],
+                    "similarity": round(similarity, 3),
+                    "edit_distance": distance,
+                    "phonetic_keys": [left_sound, right_sound],
+                    "reasons": reasons,
+                }
             )
-    return {"names_checked": len(names), "collisions": collisions}
+    return {
+        "names_checked": len(names),
+        "visual_threshold": threshold,
+        "allowed_pair_count": len(allowed_pairs),
+        "collisions": collisions,
+    }
 
 
 def analyze(data: dict[str, Any]) -> dict[str, Any]:

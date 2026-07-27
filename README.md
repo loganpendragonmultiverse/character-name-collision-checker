@@ -12,7 +12,7 @@ name-collisions examples/sample.json
 name-collisions examples/sample.json --format json --output report.json
 ```
 
-The example documents the complete v1 input shape. Markdown is intended for immediate review; JSON preserves structured evidence for scripts and later comparison. An existing output file is never overwritten.
+The example documents the complete input shape. Set `visual_threshold` to tune lexical sensitivity and list intentional two-name `allowed_pairs` to suppress known exceptions. Version 1.1 findings include edit-distance and phonetic-key evidence. Markdown is intended for immediate review; JSON preserves structured evidence for scripts and later comparison. An existing output file is never overwritten.
 
 ## Privacy and platforms
 
