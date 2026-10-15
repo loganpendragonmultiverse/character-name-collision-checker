@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0 - Unreleased
+
+- Use optional `characters` instead of legacy `names`: `[{"id":"mara","name":"Mara","aliases":["Captain"]},{"id":"mira","name":"Mira","aliases":["Captain"]}]`.
+
 ## 1.1.0 - 2026-07-27
 
 - Added configurable visual-similarity thresholds and intentional allowed pairs.

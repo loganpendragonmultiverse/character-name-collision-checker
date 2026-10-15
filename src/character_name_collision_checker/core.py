@@ -32,6 +32,8 @@ def _distance(left: str, right: str) -> int:
 
 
 def _name_collisions(data: dict[str, Any]) -> dict[str, Any]:
+    if "characters" in data:
+        return _character_collisions(data)
     names = [str(name).strip() for name in _require(data, "names") if str(name).strip()]
     if len(names) != len({name.casefold() for name in names}):
         raise ValueError("names must be unique ignoring case")
@@ -68,6 +70,78 @@ def _name_collisions(data: dict[str, Any]) -> dict[str, Any]:
         "names_checked": len(names),
         "visual_threshold": threshold,
         "allowed_pair_count": len(allowed_pairs),
+        "collisions": collisions,
+    }
+
+
+def _character_collisions(data: dict[str, Any]) -> dict[str, Any]:
+    characters = data["characters"]
+    if not isinstance(characters, list):
+        raise TypeError("characters must be an array")
+    ids: set[str] = set()
+    spellings: list[tuple[str, str]] = []
+    for character in characters:
+        if not isinstance(character, dict):
+            raise TypeError("characters must contain objects")
+        identifier, name = character.get("id"), character.get("name")
+        aliases = character.get("aliases", [])
+        if (
+            not isinstance(identifier, str)
+            or not identifier.strip()
+            or identifier in ids
+            or not isinstance(name, str)
+            or not name.strip()
+            or not isinstance(aliases, list)
+            or any(not isinstance(alias, str) or not alias.strip() for alias in aliases)
+        ):
+            raise ValueError("characters need unique ids, names and text aliases")
+        ids.add(identifier)
+        seen: set[str] = set()
+        for spelling in [name, *aliases]:
+            spelling = spelling.strip()
+            if spelling.casefold() not in seen:
+                seen.add(spelling.casefold())
+                spellings.append((identifier, spelling))
+    allowed = data.get("allowed_pairs", [])
+    if not isinstance(allowed, list) or any(
+        not isinstance(pair, list)
+        or len(pair) != 2
+        or any(not isinstance(key, str) or key not in ids for key in pair)
+        or pair[0] == pair[1]
+        for pair in allowed
+    ):
+        raise ValueError("allowed_pairs must contain two distinct character ids")
+    permitted = {frozenset(pair) for pair in allowed}
+    # Reuse the existing threshold/key rules; identical cross-character spellings are explicit.
+    base = _name_collisions(
+        {"names": ["validation"], "visual_threshold": data.get("visual_threshold", 0.72)}
+    )
+    collisions = []
+    for (left_id, left), (right_id, right) in combinations(spellings, 2):
+        if left_id == right_id or frozenset((left_id, right_id)) in permitted:
+            continue
+        if left.casefold() == right.casefold():
+            sound = re.sub(r"[aeiouy\W]", "", left.casefold().replace("ph", "f"))
+            findings = [
+                {
+                    "names": [left, right],
+                    "similarity": 1.0,
+                    "edit_distance": 0,
+                    "phonetic_keys": [sound, sound],
+                    "reasons": ["visual", "phonetic"],
+                }
+            ]
+        else:
+            findings = _name_collisions(
+                {"names": [left, right], "visual_threshold": base["visual_threshold"]}
+            )["collisions"]
+        for finding in findings:
+            collisions.append({**finding, "character_ids": [left_id, right_id]})
+    return {
+        **base,
+        "names_checked": len(spellings),
+        "characters_checked": len(ids),
+        "allowed_pair_count": len(permitted),
         "collisions": collisions,
     }
 
