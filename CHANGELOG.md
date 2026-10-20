@@ -1,6 +1,8 @@
 # Changelog
 
-## 1.2.2 - 2026-10-20
+## 1.2.3 - 2026-10-20
+
+- Bundle operating documentation and JSON examples in wheels as well as source distributions.
 
 - Validate legacy names and intentional exceptions without coercion; handle empty casts, finite thresholds, Unicode casefold lengths and consistent non-empty phonetic keys. Fence report data safely and create output files exclusively, including dangling symlink refusal.
 
