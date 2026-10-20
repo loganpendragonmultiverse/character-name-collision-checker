@@ -24,3 +24,7 @@
 
 - Released the first complete Character Name Collision Checker command-line workflow.
 - Added deterministic JSON and Markdown reporting, representative examples, and cross-platform tests.
+
+## Unpublished verification candidate: v1.2.2
+
+The immutable v1.2.2 tag was a verification candidate, with no public GitHub release. Its wheel did not bundle the separate operating guides and examples. v1.2.3 supersedes that candidate and includes the reviewed runtime repairs together with complete installed guidance.
