@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "character-name-collision-checker"
-version = "1.2.2"
+version = "1.2.3"
 description = "Flag character names that are visually or phonetically easy to confuse."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,3 +35,7 @@ omit = ["src/*/__main__.py"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=character_name_collision_checker --cov-branch --cov-report=term-missing --cov-fail-under=90"
+
+[tool.setuptools.data-files]
+"share/character-name-collision-checker/docs" = ["README.md", "DEVELOPMENT.md", "TESTING.md", "CHANGELOG.md"]
+"share/character-name-collision-checker/examples" = ["examples/*.json"]
