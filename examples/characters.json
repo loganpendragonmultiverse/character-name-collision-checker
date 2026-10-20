@@ -1,0 +1,7 @@
+{
+  "characters": [
+    {"id": "mara", "name": "Mara", "aliases": ["Captain"]},
+    {"id": "mira", "name": "Mira", "aliases": ["Captain"]}
+  ],
+  "allowed_pairs": []
+}

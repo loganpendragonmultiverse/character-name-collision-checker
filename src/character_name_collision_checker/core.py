@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from itertools import combinations
 from typing import Any
@@ -8,11 +9,20 @@ from typing import Any
 PROJECT = "character-name-collision-checker"
 
 
-def _require(data: dict[str, Any], key: str) -> Any:
-    value = data.get(key)
-    if value is None or value == "" or value == []:
-        raise ValueError(f"{key} is required")
-    return value
+def _threshold(data: dict[str, Any]) -> float:
+    value = data.get("visual_threshold", 0.72)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError("visual_threshold must be a finite number between 0 and 1")
+    if not 0 <= value <= 1:
+        raise ValueError("visual_threshold must be a finite number between 0 and 1")
+    threshold = float(value)
+    if not math.isfinite(threshold) or not 0 <= threshold <= 1:
+        raise ValueError("visual_threshold must be a finite number between 0 and 1")
+    return threshold
+
+
+def _sound(name: str) -> str:
+    return re.sub(r"[aeiouy\W_]", "", name.casefold().replace("ph", "f"))
 
 
 def _distance(left: str, right: str) -> int:
@@ -34,27 +44,35 @@ def _distance(left: str, right: str) -> int:
 def _name_collisions(data: dict[str, Any]) -> dict[str, Any]:
     if "characters" in data:
         return _character_collisions(data)
-    names = [str(name).strip() for name in _require(data, "names") if str(name).strip()]
+    raw = data.get("names")
+    if not isinstance(raw, list) or any(
+        not isinstance(name, str) or not name.strip() for name in raw
+    ):
+        raise ValueError("names must be an array of non-empty strings")
+    names = [name.strip() for name in raw]
     if len(names) != len({name.casefold() for name in names}):
         raise ValueError("names must be unique ignoring case")
-    threshold = float(data.get("visual_threshold", 0.72))
-    if not 0 <= threshold <= 1:
-        raise ValueError("visual_threshold must be between 0 and 1")
-    allowed_pairs = {
-        frozenset(str(name).strip().casefold() for name in pair)
-        for pair in data.get("allowed_pairs", [])
-        if isinstance(pair, list) and len(pair) == 2
-    }
+    threshold = _threshold(data)
+    allowed = data.get("allowed_pairs", [])
+    known = {name.casefold() for name in names}
+    if not isinstance(allowed, list) or any(
+        not isinstance(pair, list)
+        or len(pair) != 2
+        or any(not isinstance(name, str) or name.strip().casefold() not in known for name in pair)
+        or pair[0].strip().casefold() == pair[1].strip().casefold()
+        for pair in allowed
+    ):
+        raise ValueError("allowed_pairs must contain two distinct known names")
+    allowed_pairs = {frozenset(name.strip().casefold() for name in pair) for pair in allowed}
     collisions = []
     for left, right in combinations(names, 2):
         if frozenset({left.casefold(), right.casefold()}) in allowed_pairs:
             continue
         distance = _distance(left.casefold(), right.casefold())
-        similarity = 1 - distance / max(len(left), len(right), 1)
-        left_sound = re.sub("[aeiouy\\W]", "", left.casefold().replace("ph", "f"))
-        right_sound = re.sub("[aeiouy\\W]", "", right.casefold().replace("ph", "f"))
+        similarity = 1 - distance / max(len(left.casefold()), len(right.casefold()), 1)
+        left_sound, right_sound = _sound(left), _sound(right)
         reasons = (["visual"] if similarity >= threshold else []) + (
-            ["phonetic"] if left_sound == right_sound else []
+            ["phonetic"] if left_sound and left_sound == right_sound else []
         )
         if reasons:
             collisions.append(
@@ -121,14 +139,14 @@ def _character_collisions(data: dict[str, Any]) -> dict[str, Any]:
         if left_id == right_id or frozenset((left_id, right_id)) in permitted:
             continue
         if left.casefold() == right.casefold():
-            sound = re.sub(r"[aeiouy\W]", "", left.casefold().replace("ph", "f"))
+            sound = _sound(left)
             findings = [
                 {
                     "names": [left, right],
                     "similarity": 1.0,
                     "edit_distance": 0,
                     "phonetic_keys": [sound, sound],
-                    "reasons": ["visual", "phonetic"],
+                    "reasons": ["visual"] + (["phonetic"] if sound else []),
                 }
             ]
         else:
@@ -147,6 +165,10 @@ def _character_collisions(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def analyze(data: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        raise TypeError("input must be an object")
+    if "names" in data and "characters" in data:
+        raise ValueError("supply names or characters, not both")
     return {"version": 1, "project": PROJECT, **_name_collisions(data)}
 
 
@@ -160,6 +182,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         if key not in {"version", "project"}:
             lines.append(f"## {key.replace('_', ' ').title()}")
             lines.append("")
-            lines.append(f"```json\n{json.dumps(value, indent=2, ensure_ascii=False)}\n```")
+            payload = json.dumps(value, indent=2, ensure_ascii=False)
+            fence = "`" * max(
+                3, max((len(run) + 1 for run in re.findall(r"`+", payload)), default=3)
+            )
+            lines.append(f"{fence}json\n{payload}\n{fence}")
             lines.append("")
     return "\n".join(lines).rstrip() + "\n"

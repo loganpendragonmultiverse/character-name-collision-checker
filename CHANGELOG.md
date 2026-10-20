@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 - 2026-10-20
+
+- Validate legacy names and intentional exceptions without coercion; handle empty casts, finite thresholds, Unicode casefold lengths and consistent non-empty phonetic keys. Fence report data safely and create output files exclusively, including dangling symlink refusal.
+
 ## 1.2.1
 
 - Correct released documentation labels; package behavior is unchanged.
